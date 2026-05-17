@@ -517,23 +517,8 @@ function fqUpdateGuideActive() {
     el.classList.toggle('fq-active', parseInt(el.dataset.idx, 10) === fqIdx);
   });
   const active = document.querySelector('#fq-guide-list .fq-ch-item.fq-active');
-  if (!active) return;
-
-  if (window.innerWidth > 767) {
-    // Desktop: guide list has its own internal scrollbar
-    active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  } else {
-    // Mobile: the whole PAGE scrolls. scrollIntoView doesn't know about our
-    // sticky mobile bar (52px) + sticky guide head, so calculate manually.
-    const rect    = active.getBoundingClientRect();
-    const head    = document.querySelector('.fq-guide-head');
-    const stickyH = 52 + (head ? head.offsetHeight : 100);
-    if (rect.top < stickyH + 4) {
-      window.scrollTo({ top: window.scrollY + rect.top - stickyH - 4, behavior: 'smooth' });
-    } else if (rect.bottom > window.innerHeight - 4) {
-      window.scrollTo({ top: window.scrollY + rect.bottom - window.innerHeight + 4, behavior: 'smooth' });
-    }
-  }
+  // scroll-padding-top on .fq-right-rail ensures the guide head never covers the item
+  if (active) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function fqPrevCh() { fqSelectCh(fqIdx <= 0 ? FQ_CHANNELS.length - 1 : fqIdx - 1); }

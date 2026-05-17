@@ -1247,26 +1247,30 @@ button, input { font: inherit; }
   /* Hide desktop remote on mobile */
   .fq-remote-wrap { display: none; }
 
-  /* Channel guide */
+  /* Channel guide — self-contained scroll widget so CH01 is never clipped */
   .fq-right-rail {
     order: 4;
     grid-column: auto;
     grid-row: auto;
     display: flex;
     flex-direction: column;
-    height: auto;
+    height: 55vh;           /* fixed height: guide scrolls internally */
     max-height: none;
+    overflow-y: auto;       /* guide list scrolls inside this container */
+    overscroll-behavior: contain;
+    scroll-padding-top: 110px; /* space for sticky guide head inside right-rail */
     border: none;
     border-radius: 0;
     border-top: 2px solid rgba(201,162,39,.2);
     background: rgba(8,7,5,.95);
   }
 
+  /* Guide head sticky within right-rail (not the page) — no overlap with CH01 */
   .fq-guide-head {
     padding: 10px 14px 8px;
     position: sticky;
-    top: 52px; /* height of mobile header */
-    z-index: 50;
+    top: 0;
+    z-index: 10;
     background: rgba(10,8,6,.98);
     border-bottom: 1px solid rgba(201,162,39,.2);
   }
@@ -1280,6 +1284,7 @@ button, input { font: inherit; }
     height: auto;
     max-height: none;
     overflow-y: visible;
+    flex: 1;
   }
 
   /* Channel items — comfortable touch targets */
@@ -1289,7 +1294,6 @@ button, input { font: inherit; }
     padding: 8px 12px;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
-    scroll-margin-top: 160px; /* accounts for sticky mobile bar + guide head */
   }
 
   .fq-ch-num  { font-size: 28px; }
@@ -1387,6 +1391,7 @@ button, input { font: inherit; }
     height: 100%;
     overflow-y: auto;
     max-height: none;
+    scroll-padding-top: 110px;
     border-top: none;
     border-left: 2px solid rgba(201,162,39,.25);
   }
