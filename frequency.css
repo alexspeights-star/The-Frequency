@@ -176,6 +176,8 @@ button, input { font: inherit; }
   align-items: center;
   gap: 20px;
   flex-shrink: 0;
+  overflow: visible;
+  padding-bottom: 8px;
 }
 
 .fq-main-logo { line-height: .82; text-transform: uppercase; letter-spacing: 2px; }
@@ -212,20 +214,21 @@ button, input { font: inherit; }
 .fq-tagline {
   justify-self: center;
   font-family: 'Permanent Marker', cursive;
-  font-size: clamp(18px, 1.8vw, 32px);
-  line-height: 1.08;
+  font-size: clamp(16px, 1.5vw, 24px);
+  line-height: 1.05;
   color: var(--fq-cream);
   transform: rotate(-3deg);
   text-shadow: 0 1px 0 #000;
+  overflow: visible;
 }
 
 .fq-tune {
   display: inline-block;
-  margin-top: 6px;
+  margin-top: 4px;
   color: var(--fq-gold2);
   border: 2px solid var(--fq-gold2);
   border-radius: 50%;
-  padding: 2px 16px 4px;
+  padding: 1px 12px 3px;
   transform: rotate(-3deg);
 }
 

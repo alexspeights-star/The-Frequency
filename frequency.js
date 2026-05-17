@@ -21,8 +21,9 @@ let fqBugTimer   = null;
 let fqUserName   = '';
 let fqUnlocked   = false;
 let fqErrorSkip  = 0;
-let fqActiveCat  = 'all';
-let fqTargetStart = 0; // intended seek position — verified after PLAYING fires
+let fqActiveCat   = 'all';
+let fqTargetStart = 0;   // intended seek position — verified after PLAYING fires
+let fqShortTimer  = null; // delayed Shorts duration check
 
 /* ── TIME BLOCK ──────────────────────────────────────────── */
 function fqGetBlock() {
@@ -199,14 +200,26 @@ async function fqPopulateQueues() {
         const ids = await fqFetchVideos(ch.youtubeChannelId);
         if (ids?.length) {
           ch.videoIds = ids;
-          // If this is the active channel and it was showing no-signal, start playing
           const chIndex = FQ_CHANNELS.indexOf(ch);
+          // If active channel was showing no-signal, start playing now that we have IDs
           if (chIndex === fqIdx && fqReady) {
             const ns = document.getElementById('fq-no-signal');
             if (ns && ns.style.display !== 'none') {
               fqStopNS();
               fqLoadSyncedVideo();
             }
+          }
+          // Update this channel's guide item with the new thumbnail
+          const item = document.querySelector(`#fq-guide-list .fq-ch-item[data-idx="${chIndex}"]`);
+          if (item) {
+            const thumbWrap = item.querySelector('.fq-ch-thumb-wrap');
+            if (thumbWrap && !item.querySelector('.fq-ch-thumb')) {
+              const url = fqThumbForChannel(ch);
+              if (url) {
+                thumbWrap.innerHTML = `<img class="fq-ch-thumb" src="${url}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="fq-ch-ph" style="display:none">${fqGetChannelIcon(ch)}</div>`;
+              }
+            }
+            item.classList.remove('fq-ch-pending');
           }
         }
       }
@@ -289,12 +302,19 @@ function fqOnState(e) {
 
   if (e.data === YT.PlayerState.PLAYING) {
     fqErrorSkip = 0;
+    clearTimeout(fqShortTimer);
 
-    // Skip if this is a Short (duration < FQ_MIN_DURATION)
-    try {
-      const dur = fqPlayer.getDuration();
-      if (dur > 0 && dur < FQ_MIN_DURATION) { fqSkipBlockedVideo(); return; }
-    } catch (err) {}
+    // Skip Shorts — check immediately and again after 1.5s because getDuration()
+    // sometimes returns 0 in the first PLAYING event before metadata arrives
+    const checkShort = () => {
+      try {
+        const dur = fqPlayer.getDuration();
+        if (dur > 0 && dur < FQ_MIN_DURATION) { fqSkipBlockedVideo(); return true; }
+      } catch (err) {}
+      return false;
+    };
+    if (checkShort()) return;
+    fqShortTimer = setTimeout(() => { checkShort(); }, 1500);
 
     // Verify sync position: if YouTube reset startSeconds to 0, seek manually
     clearTimeout(fqSeekVerifyTimer);
@@ -681,6 +701,16 @@ function fqGetChannelIcon(ch) {
   return icons[ch.type] || '📺';
 }
 
+function fqThumbForChannel(ch) {
+  // Use explicit thumbUrl first
+  if (ch.thumbUrl) return ch.thumbUrl;
+  // Derive from live stream ID
+  if (ch.liveStreamVideoId) return `https://i.ytimg.com/vi/${ch.liveStreamVideoId}/mqdefault.jpg`;
+  // Derive from first hardcoded or RSS-loaded video ID
+  if (ch.videoIds?.length) return `https://i.ytimg.com/vi/${ch.videoIds[0]}/mqdefault.jpg`;
+  return null;
+}
+
 function fqRenderGuide() {
   const list = document.getElementById('fq-guide-list');
   if (!list) return;
@@ -694,13 +724,14 @@ function fqRenderGuide() {
     const i      = FQ_CHANNELS.indexOf(ch);
     const isLive = ch.isLive || ch.liveStreamVideoId;
     const hasContent = ch.videoIds.length || ch.liveStreamVideoId || ch.playlistId;
+    const thumbUrl   = fqThumbForChannel(ch);
 
     const el     = document.createElement('div');
     el.className = `fq-ch-item${i === fqIdx ? ' fq-active' : ''}${!hasContent ? ' fq-ch-pending' : ''}`;
     el.dataset.idx = i;
 
-    const thumb = ch.thumbUrl
-      ? `<img class="fq-ch-thumb" src="${ch.thumbUrl}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+    const thumb = thumbUrl
+      ? `<img class="fq-ch-thumb" src="${thumbUrl}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
         + `<div class="fq-ch-ph" style="display:none">${fqGetChannelIcon(ch)}</div>`
       : `<div class="fq-ch-ph">${fqGetChannelIcon(ch)}</div>`;
 
