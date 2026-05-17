@@ -50,9 +50,10 @@ function fqSeededRandom(seed) {
 
 function fqDailyShuffleIds(ids, channelNumber) {
   const now     = new Date();
-  const daySeed = now.getFullYear() * 10000
-                + (now.getMonth() + 1) * 100
-                + now.getDate()
+  // Use UTC date so every device on earth uses the same day seed
+  const daySeed = now.getUTCFullYear() * 10000
+                + (now.getUTCMonth() + 1) * 100
+                + now.getUTCDate()
                 + parseInt(channelNumber, 10);
   const rand = fqSeededRandom(daySeed);
   const arr  = [...ids];
@@ -280,21 +281,24 @@ function fqOnState(e) {
     if (checkShort()) return;
     fqShortTimer = setTimeout(() => { checkShort(); }, 1500);
 
-    // Verify sync position: if YouTube reset startSeconds to 0, seek manually
+    // Verify sync position — retry up to 3× because getDuration() can be 0
+    // while the video is still buffering after the initial seek
     clearTimeout(fqSeekVerifyTimer);
     if (fqTargetStart > 60) {
-      fqSeekVerifyTimer = setTimeout(() => {
+      let verifyCount = 0;
+      const verifySeek = () => {
         if (!fqPlayer || !fqReady) return;
         try {
           const cur = fqPlayer.getCurrentTime();
           const dur = fqPlayer.getDuration();
           if (cur < 5 && dur > 0) {
-            // Seek to target, clamped to actual duration
-            const seek = fqTargetStart < dur ? fqTargetStart : fqTargetStart % dur;
+            const seek = fqTargetStart < dur ? fqTargetStart : fqTargetStart % Math.max(dur, 1);
             fqPlayer.seekTo(seek, true);
+            if (++verifyCount < 3) fqSeekVerifyTimer = setTimeout(verifySeek, 1500);
           }
         } catch (err) {}
-      }, 800);
+      };
+      fqSeekVerifyTimer = setTimeout(verifySeek, 800);
     }
 
     const ns = document.getElementById('fq-no-signal');
@@ -513,7 +517,23 @@ function fqUpdateGuideActive() {
     el.classList.toggle('fq-active', parseInt(el.dataset.idx, 10) === fqIdx);
   });
   const active = document.querySelector('#fq-guide-list .fq-ch-item.fq-active');
-  if (active) active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  if (!active) return;
+
+  if (window.innerWidth > 767) {
+    // Desktop: guide list has its own internal scrollbar
+    active.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  } else {
+    // Mobile: the whole PAGE scrolls. scrollIntoView doesn't know about our
+    // sticky mobile bar (52px) + sticky guide head, so calculate manually.
+    const rect    = active.getBoundingClientRect();
+    const head    = document.querySelector('.fq-guide-head');
+    const stickyH = 52 + (head ? head.offsetHeight : 100);
+    if (rect.top < stickyH + 4) {
+      window.scrollTo({ top: window.scrollY + rect.top - stickyH - 4, behavior: 'smooth' });
+    } else if (rect.bottom > window.innerHeight - 4) {
+      window.scrollTo({ top: window.scrollY + rect.bottom - window.innerHeight + 4, behavior: 'smooth' });
+    }
+  }
 }
 
 function fqPrevCh() { fqSelectCh(fqIdx <= 0 ? FQ_CHANNELS.length - 1 : fqIdx - 1); }
