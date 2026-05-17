@@ -4,7 +4,6 @@
 // ============================================================
 
 /* ── CONSTANTS ───────────────────────────────────────────── */
-const FQ_API_KEY        = 'YOUR_API_KEY_HERE'; // ← drop your YouTube Data API key here
 const FQ_CACHE_TTL      = 6 * 60 * 60 * 1000; // 6 hours
 const FQ_VIDEO_SLOT_SEC = 1800;                // 30 min per video slot
 const FQ_MIN_DURATION   = 120;                 // skip anything under 2 min (blocks Shorts)
@@ -23,7 +22,8 @@ let fqUnlocked   = false;
 let fqErrorSkip  = 0;
 let fqActiveCat   = 'all';
 let fqTargetStart = 0;   // intended seek position — verified after PLAYING fires
-let fqShortTimer  = null; // delayed Shorts duration check
+let fqShortTimer     = null; // delayed Shorts duration check
+let fqUnstartedTimer = null; // skip video if it never starts playing
 
 /* ── TIME BLOCK ──────────────────────────────────────────── */
 function fqGetBlock() {
@@ -77,58 +77,7 @@ function fqGetSyncedPosition(channelNumber, videoIds) {
   return { shuffled, videoIndex, startSeconds };
 }
 
-/* ── CORS PROXY WITH FALLBACK ────────────────────────────── */
-// AbortSignal.timeout is not available in all browsers — use manual controller
-function fqAbortSignal(ms) {
-  const ctrl = new AbortController();
-  setTimeout(() => ctrl.abort(), ms);
-  return ctrl.signal;
-}
-
-// Each proxy has its own response parser
-const FQ_PROXIES = [
-  {
-    url:   u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
-    parse: async r => { const d = await r.json(); return d?.contents || null; },
-  },
-  {
-    url:   u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
-    parse: async r => { const t = await r.text(); return t?.length > 50 ? t : null; },
-  },
-];
-
-async function fqProxyFetch(targetUrl) {
-  for (const { url, parse } of FQ_PROXIES) {
-    try {
-      const res = await fetch(url(targetUrl), { signal: fqAbortSignal(9000) });
-      if (!res.ok) continue;
-      const text = await parse(res);
-      if (text) return text;
-    } catch (e) { /* try next */ }
-  }
-  return null;
-}
-
-/* ── RSS VIDEO FETCH ─────────────────────────────────────── */
-async function fqFetchViaRSS(channelId) {
-  const rssUrl = `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`;
-  const text   = await fqProxyFetch(rssUrl);
-  if (!text) return null;
-
-  try {
-    const xml = new DOMParser().parseFromString(text, 'text/xml');
-    const ids = [];
-    xml.querySelectorAll('entry').forEach(entry => {
-      const el = entry.getElementsByTagNameNS('http://www.youtube.com/xml/schemas/2015', 'videoId')[0];
-      if (el?.textContent) ids.push(el.textContent.trim());
-    });
-    return ids.length ? ids : null;
-  } catch (e) {
-    return null;
-  }
-}
-
-/* ── API + RSS VIDEO FETCH ───────────────────────────────── */
+/* ── VIDEO FETCH (Vercel serverless — no CORS) ───────────── */
 async function fqFetchVideos(channelId) {
   const cacheKey = `fq_vids_${channelId}`;
   try {
@@ -139,42 +88,53 @@ async function fqFetchVideos(channelId) {
     }
   } catch (e) {}
 
-  let ids = null;
-
-  // Try YouTube Data API first (best quality, filters Shorts with videoDuration=long)
-  if (FQ_API_KEY && FQ_API_KEY !== 'YOUR_API_KEY_HERE') {
-    const apiIds = [];
-    let pageToken = '';
-    try {
-      do {
-        const url = `https://www.googleapis.com/youtube/v3/search`
-          + `?key=${FQ_API_KEY}&channelId=${channelId}&part=id`
-          + `&order=date&type=video&videoDuration=long&maxResults=50`
-          + (pageToken ? `&pageToken=${pageToken}` : '');
-        const res = await fetch(url, { signal: AbortSignal.timeout(10000) });
-        if (!res.ok) break;
-        const d = await res.json();
-        (d.items || []).forEach(i => { if (i.id?.videoId) apiIds.push(i.id.videoId); });
-        pageToken = d.nextPageToken || '';
-      } while (pageToken && apiIds.length < 100);
-      if (apiIds.length) ids = apiIds;
-    } catch (e) {}
-  }
-
-  // Fallback: RSS (returns up to 15 most recent videos, no duration filter)
-  if (!ids) ids = await fqFetchViaRSS(channelId);
-
-  if (ids?.length) {
-    try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), ids })); } catch (e) {}
-    const apiEl = document.getElementById('fq-st-api');
-    if (apiEl) {
-      const label = FQ_API_KEY !== 'YOUR_API_KEY_HERE' ? 'API: ACTIVE' : 'RSS: ACTIVE';
-      apiEl.textContent = label;
-      apiEl.className   = 'fq-si fq-green';
+  try {
+    const res = await fetch(`/api/rss?channelId=${channelId}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.ids?.length) {
+        try { localStorage.setItem(cacheKey, JSON.stringify({ ts: Date.now(), ids: data.ids })); } catch (e) {}
+        const apiEl = document.getElementById('fq-st-api');
+        if (apiEl) { apiEl.textContent = 'RSS: ACTIVE'; apiEl.className = 'fq-si fq-green'; }
+        return data.ids;
+      }
     }
-  }
+  } catch (e) {}
 
-  return ids?.length ? ids : null;
+  return null;
+}
+
+/* ── AVATAR FETCH (Vercel serverless — real channel profile pics) */
+async function fqFetchAvatar(ch) {
+  if (!ch.youtubeId || ch.sourceType !== 'channel') return;
+  const cacheKey = `fq_avatar_${ch.youtubeId}`;
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) { ch.avatarUrl = cached; fqUpdateGuideThumb(ch); return; }
+  } catch (e) {}
+
+  try {
+    const res = await fetch(`/api/avatar?channelId=${ch.youtubeId}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.avatarUrl) {
+        ch.avatarUrl = data.avatarUrl;
+        try { localStorage.setItem(cacheKey, data.avatarUrl); } catch (e) {}
+        fqUpdateGuideThumb(ch);
+      }
+    }
+  } catch (e) {}
+}
+
+function fqUpdateGuideThumb(ch) {
+  const i    = FQ_CHANNELS.indexOf(ch);
+  const item = document.querySelector(`#fq-guide-list .fq-ch-item[data-idx="${i}"]`);
+  if (!item) return;
+  const wrap = item.querySelector('.fq-ch-thumb-wrap');
+  if (!wrap) return;
+  const url = fqThumbForChannel(ch);
+  if (!url) return;
+  wrap.innerHTML = `<img class="fq-ch-thumb fq-ch-avatar" src="${url}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="fq-ch-ph" style="display:none">${fqGetChannelIcon(ch)}</div>`;
 }
 
 /* ── POPULATE ALL QUEUES ─────────────────────────────────── */
@@ -201,7 +161,6 @@ async function fqPopulateQueues() {
         if (ids?.length) {
           ch.videoIds = ids;
           const chIndex = FQ_CHANNELS.indexOf(ch);
-          // If active channel was showing no-signal, start playing now that we have IDs
           if (chIndex === fqIdx && fqReady) {
             const ns = document.getElementById('fq-no-signal');
             if (ns && ns.style.display !== 'none') {
@@ -209,20 +168,12 @@ async function fqPopulateQueues() {
               fqLoadSyncedVideo();
             }
           }
-          // Update this channel's guide item with the new thumbnail
           const item = document.querySelector(`#fq-guide-list .fq-ch-item[data-idx="${chIndex}"]`);
-          if (item) {
-            const thumbWrap = item.querySelector('.fq-ch-thumb-wrap');
-            if (thumbWrap && !item.querySelector('.fq-ch-thumb')) {
-              const url = fqThumbForChannel(ch);
-              if (url) {
-                thumbWrap.innerHTML = `<img class="fq-ch-thumb" src="${url}" alt="" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="fq-ch-ph" style="display:none">${fqGetChannelIcon(ch)}</div>`;
-              }
-            }
-            item.classList.remove('fq-ch-pending');
-          }
+          if (item) item.classList.remove('fq-ch-pending');
         }
       }
+      // Fire-and-forget: load real channel avatar from server (updates guide thumbnail)
+      fqFetchAvatar(ch);
     });
 
   // Fetch in parallel, 5 at a time to avoid throttling
@@ -291,6 +242,16 @@ function fqSkipBlockedVideo() {
 let fqSeekVerifyTimer = null;
 
 function fqOnState(e) {
+  if (e.data === YT.PlayerState.UNSTARTED) {
+    clearTimeout(fqUnstartedTimer);
+    fqUnstartedTimer = setTimeout(() => {
+      try {
+        if (fqPlayer?.getPlayerState() === YT.PlayerState.UNSTARTED) fqSkipBlockedVideo();
+      } catch (err) {}
+    }, 3000);
+    return;
+  }
+
   if (e.data === YT.PlayerState.ENDED) {
     try {
       const dur = fqPlayer.getDuration();
@@ -303,6 +264,7 @@ function fqOnState(e) {
   if (e.data === YT.PlayerState.PLAYING) {
     fqErrorSkip = 0;
     clearTimeout(fqShortTimer);
+    clearTimeout(fqUnstartedTimer);
 
     // Skip Shorts — check immediately and again after 1.5s because getDuration()
     // sometimes returns 0 in the first PLAYING event before metadata arrives
@@ -705,12 +667,11 @@ function fqGetChannelIcon(ch) {
 }
 
 function fqThumbForChannel(ch) {
-  if (ch.thumbUrl) return ch.thumbUrl;
-  // Live or playlist: use the youtubeId as a video thumbnail
+  if (ch.avatarUrl) return ch.avatarUrl;  // real channel profile picture (best)
+  if (ch.thumbUrl)  return ch.thumbUrl;   // manually specified fallback
   if ((ch.sourceType === 'live' || ch.sourceType === 'playlist') && ch.youtubeId) {
     return `https://i.ytimg.com/vi/${ch.youtubeId}/mqdefault.jpg`;
   }
-  // Channel: use first loaded video ID
   if (ch.videoIds?.length) return `https://i.ytimg.com/vi/${ch.videoIds[0]}/mqdefault.jpg`;
   return null;
 }
@@ -726,8 +687,8 @@ function fqRenderGuide() {
 
   visible.forEach(ch => {
     const i      = FQ_CHANNELS.indexOf(ch);
-    const isLive = ch.isLive || ch.liveStreamVideoId;
-    const hasContent = ch.videoIds.length || ch.liveStreamVideoId || ch.playlistId;
+    const isLive     = ch.isLive || ch.sourceType === 'live';
+    const hasContent = ch.videoIds.length || ch.sourceType === 'live' || ch.sourceType === 'playlist';
     const thumbUrl   = fqThumbForChannel(ch);
 
     const el     = document.createElement('div');

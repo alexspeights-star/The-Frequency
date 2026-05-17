@@ -239,7 +239,7 @@ const FQ_CHANNELS = [
   {
     number: '13',
     name: 'Billy Graham Evangelistic Association',
-    host: 'BGEA Staff',
+    host: 'Franklin Graham',
     type: 'CHURCH',
     category: 'church',
     vibe: 'legacy',
@@ -891,10 +891,10 @@ const FQ_CHANNELS = [
     vibe: 'peaceful',
     desc: "Peaceful Bible readings, meditations, and rain soundscapes. For the ones who can't sleep.",
     website: '',
-    sourceType: 'live',
-    youtubeId: 'qXPoj_VYb3U', // ← verify: confirm this is still a valid 24/7 stream
+    sourceType: 'channel',
+    youtubeId: 'UC5rEKo8VUooEj_jaI5-ApvA',
     thumbUrl: '',
-    isLive: true,
+    isLive: false,
     videoIds: [],
   },
 
