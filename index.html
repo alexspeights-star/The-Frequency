@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="The Frequency — A digital TV station by Prodigal Robe. Real faith. Real people. Real talk. No static.">
+  <title>The Frequency — Prodigal Robe</title>
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="stylesheet" href="frequency.css">
+</head>
+<body>
+
+<!-- ── NAME PROMPT ──────────────────────────────────────── -->
+<div id="fq-name-overlay" style="display:none">
+  <div class="fq-name-box">
+    <h2>TUNE IN</h2>
+    <p>ENTER YOUR DISPLAY NAME FOR LIVE CHAT</p>
+    <input class="fq-name-inp" id="fq-name-inp" type="text" placeholder="YOUR NAME..." maxlength="24">
+    <button class="fq-name-btn" onclick="fqSaveName()">JOIN THE FREQUENCY</button>
+    <button class="fq-name-skip" onclick="fqSkipName()">WATCH ANONYMOUSLY</button>
+  </div>
+</div>
+
+<!-- ── MAIN WRAPPER ─────────────────────────────────────── -->
+<div id="frequency-wrapper">
+
+  <!-- Boot overlay -->
+  <div id="freq-boot-overlay">
+    <div class="fq-tv-bezel">
+      <div class="fq-screen-area">
+        <div id="fq-boot-line"></div>
+        <canvas id="fq-static-canvas"></canvas>
+        <div class="fq-boot-text" id="fq-boot-text">THE FREQUENCY</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App -->
+  <div id="freq-app">
+
+    <!-- Mobile-only compact header -->
+    <div class="fq-mobile-bar">
+      <div class="fq-mb-logo">
+        <span class="fq-mb-the">THE</span>
+        <span class="fq-mb-freq">FREQUENCY</span>
+      </div>
+      <div class="fq-mb-right">
+        <span class="fq-mb-live" id="fq-mb-live">● LIVE</span>
+        <span class="fq-mb-ch" id="fq-mb-ch">CH —</span>
+      </div>
+    </div>
+
+    <!-- HERO (desktop/tablet only) -->
+    <section class="fq-hero">
+      <div class="fq-main-logo">
+        <span class="fq-logo-small">THE</span>
+        <span class="fq-logo-big">FREQUENCY</span>
+        <span class="fq-logo-sub">A DIGITAL SANCTUARY BY PRODIGAL ROBE</span>
+      </div>
+      <div class="fq-tagline">
+        Real faith.<br>Real people.<br>Real talk.<br>No static.
+        <br><span class="fq-tune">Tune in.</span>
+      </div>
+      <div class="fq-ticket">
+        <h3>PRODIGAL ROBE</h3>
+        <p>Hand picked.<br>Not algorithmic.<br>Kingdom first.</p>
+      </div>
+    </section>
+
+    <!-- CONSOLE -->
+    <main class="fq-console">
+
+      <!-- LEFT: Info Panel -->
+      <aside class="fq-chat-col">
+        <div class="fq-info-panel">
+
+          <div class="fq-info-brand">
+            <div class="fq-info-logo">PRODIGAL ROBE</div>
+            <div class="fq-info-sub">THE FREQUENCY</div>
+          </div>
+
+          <div class="fq-info-tagline">
+            Real faith. Real people.<br>Real talk. No static.
+          </div>
+
+          <!-- Now On -->
+          <div class="fq-now-on">
+            <div class="fq-now-on-label">NOW ON</div>
+            <div class="fq-now-on-ch"   id="fq-info-ch">—</div>
+            <div class="fq-now-on-host" id="fq-info-host"></div>
+            <div class="fq-now-on-name" id="fq-info-name">Select a channel</div>
+            <div class="fq-now-on-desc" id="fq-info-desc"></div>
+            <div class="fq-now-on-title" id="fq-info-title"></div>
+          </div>
+
+          <div class="fq-info-divider"></div>
+
+          <a id="fq-ch-site-btn" href="#" target="_blank" class="fq-info-btn fq-btn-site" style="display:none">
+            🌐 VISIT CHANNEL WEBSITE
+          </a>
+
+          <a href="https://discord.gg/QPkcYfCK" target="_blank" class="fq-info-btn fq-btn-discord">
+            💬 JOIN THE CONVERSATION
+          </a>
+
+          <a href="https://prodigalrobe.com" target="_blank" class="fq-info-btn fq-btn-site">
+            🌐 PRODIGALROBE.COM
+          </a>
+
+          <div class="fq-info-divider"></div>
+
+          <div class="fq-prayer-block">
+            <div class="fq-prayer-title">PRAYER REQUESTS</div>
+            <div class="fq-prayer-sub">We read every one.</div>
+            <a href="https://discord.gg/QPkcYfCK" target="_blank" class="fq-info-btn fq-btn-prayer">
+              🙏 SUBMIT A PRAYER REQUEST
+            </a>
+          </div>
+
+          <div class="fq-info-divider"></div>
+
+          <div class="fq-social-row">
+            <a href="https://youtube.com/@unchained-podcast_losingfaith" target="_blank" class="fq-social-btn">YT</a>
+            <a href="https://discord.gg/QPkcYfCK"                        target="_blank" class="fq-social-btn">DC</a>
+            <a href="https://prodigalrobe.com"                            target="_blank" class="fq-social-btn">WEB</a>
+          </div>
+
+          <div class="fq-info-verse">
+            "You will know the truth,<br>and the truth will set you free."<br>
+            <span>— John 8:32</span>
+          </div>
+
+        </div>
+      </aside>
+
+      <!-- CENTER: Video -->
+      <div class="fq-screen-wrap-outer">
+        <button class="fq-app-fs-btn" onclick="fqToggleAppFullscreen()">⛶ APP FULLSCREEN</button>
+        <section class="fq-screen-wrap" id="fq-screen-wrap">
+          <div class="fq-crt-screen" id="fq-crt-screen">
+
+            <div id="fq-yt-player"></div>
+            <div id="fq-tap-blocker" onclick="fqHandleTap()"></div>
+            <div class="fq-yt-title-mask"></div>
+
+            <!-- No signal -->
+            <div id="fq-no-signal">
+              <canvas id="fq-ns-canvas"></canvas>
+              <div class="fq-no-sig-txt">
+                <h2>NO SIGNAL</h2>
+                <p>Select a channel to tune in</p>
+              </div>
+            </div>
+
+            <canvas id="fq-ch-flash"></canvas>
+
+            <!-- Live bug -->
+            <div class="fq-live-bug" id="fq-live-bug">
+              <span class="ch"   id="fq-live-ch">CH —</span>
+              <span class="name" id="fq-live-name">SELECT CHANNEL</span>
+              <span class="host" id="fq-live-host"></span>
+              <span class="play">▶ NOW PLAYING</span>
+            </div>
+
+            <button class="fq-vid-fs-btn" id="fq-vid-fs-btn" onclick="fqVideoFullscreen()" title="Video Fullscreen">⛶</button>
+            <button class="fq-share-btn" onclick="fqShare()">SPREAD THE SIGNAL</button>
+            <div class="fq-share-toast" id="fq-share-toast">LINK COPIED!</div>
+            <div class="fq-brand-bug">PRODIGAL ROBE<span>THE FREQUENCY</span></div>
+
+          </div>
+        </section>
+      </div>
+
+      <!-- RIGHT: Channel Guide -->
+      <aside class="fq-right-rail">
+        <div class="fq-guide-head">
+          <div class="fq-guide-title">CHANNEL GUIDE →</div>
+          <div class="fq-guide-block" id="fq-guide-block">LOADING...</div>
+          <!-- Category filter tabs -->
+          <div class="fq-cat-tabs" id="fq-cat-tabs" role="tablist">
+            <button class="fq-cat-tab is-active" data-cat="all">ALL</button>
+            <button class="fq-cat-tab" data-cat="favorites">FAV</button>
+            <button class="fq-cat-tab" data-cat="church">CHURCH</button>
+            <button class="fq-cat-tab" data-cat="real-talk">TALK</button>
+            <button class="fq-cat-tab" data-cat="pulpit">PULPIT</button>
+            <button class="fq-cat-tab" data-cat="apologetics">APOL</button>
+            <button class="fq-cat-tab" data-cat="music">MUSIC</button>
+            <button class="fq-cat-tab" data-cat="comedy">COMEDY</button>
+            <button class="fq-cat-tab" data-cat="catholic">CATHOLIC</button>
+            <button class="fq-cat-tab" data-cat="ambient">AMBIENT</button>
+          </div>
+        </div>
+        <div class="fq-guide-list" id="fq-guide-list"></div>
+      </aside>
+
+      <!-- NOW PLAYING -->
+      <div class="fq-now-playing">
+        <span class="fq-np-num"   id="fq-np-num">—</span>
+        <div class="fq-np-div"></div>
+        <span class="fq-np-block" id="fq-np-block">—</span>
+        <div class="fq-np-div"></div>
+        <span class="fq-np-name"  id="fq-np-name">Select a Channel</span>
+        <span class="fq-np-host"  id="fq-np-host"></span>
+        <span class="fq-np-title" id="fq-np-title"></span>
+      </div>
+
+      <!-- REMOTE -->
+      <div class="fq-remote-wrap">
+        <div class="fq-dpad">
+          <div class="fq-circle">CH</div>
+          <div class="fq-menu-stack">
+            <button class="fq-rbtn" onclick="fqShowInfo()">INFO</button>
+            <button class="fq-rbtn" onclick="fqAutoTune()">AUTO</button>
+          </div>
+        </div>
+        <div class="fq-remote">
+          <button class="fq-rbtn" onclick="fqPrevCh()">▲ CH</button>
+          <button class="fq-rbtn" onclick="fqNextCh()">▼ CH</button>
+          <button class="fq-rbtn" onclick="fqPrevVid()">⏪ REW</button>
+          <button class="fq-rbtn fq-primary" onclick="fqNextVid()">PLAY ▶</button>
+          <button class="fq-rbtn" onclick="fqToggleMute()" id="fq-mute-btn">🔊 MUTE</button>
+          <button class="fq-rbtn" onclick="fqVideoFullscreen()">⛶ FULL</button>
+        </div>
+        <div class="fq-note">
+          Every channel.<br>Every voice.<br>Every message.<br>Points to Him.
+        </div>
+      </div>
+
+      <!-- Mobile quick controls (shown only on mobile) -->
+      <div class="fq-mobile-controls">
+        <button class="fq-mc-btn" onclick="fqPrevCh()">▲ CH</button>
+        <button class="fq-mc-btn" onclick="fqNextCh()">▼ CH</button>
+        <button class="fq-mc-btn" onclick="fqToggleMute()" id="fq-mc-mute">🔊 MUTE</button>
+        <button class="fq-mc-btn fq-mc-primary" onclick="fqAutoTune()">AUTO</button>
+      </div>
+
+      <!-- STATUS BAR -->
+      <div class="fq-status">
+        <span class="fq-si fq-green" id="fq-st-signal">● SIGNAL OK</span>
+        <span class="fq-si" id="fq-st-ch">CH —</span>
+        <span class="fq-si" id="fq-st-block">BLOCK —</span>
+        <span class="fq-si" id="fq-st-api">API: OFFLINE</span>
+        <span class="fq-si fq-gold">STAY TUNED. STAY ROOTED.</span>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="channels.js"></script>
+<script src="frequency.js"></script>
+
+</body>
+</html>
