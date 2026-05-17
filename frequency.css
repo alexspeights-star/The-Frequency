@@ -176,8 +176,6 @@ button, input { font: inherit; }
   align-items: center;
   gap: 20px;
   flex-shrink: 0;
-  max-height: 160px;
-  overflow: hidden;
 }
 
 .fq-main-logo { line-height: .82; text-transform: uppercase; letter-spacing: 2px; }
@@ -195,7 +193,7 @@ button, input { font: inherit; }
   display: block;
   color: var(--fq-cream);
   font-family: 'Bebas Neue', sans-serif;
-  font-size: clamp(56px, 8vw, 140px);
+  font-size: clamp(48px, 7vw, 110px);
   letter-spacing: 2px;
   text-shadow: 0 2px 0 rgba(0,0,0,.55);
   filter: drop-shadow(0 0 16px rgba(201,162,39,.16));

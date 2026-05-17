@@ -77,23 +77,33 @@ function fqGetSyncedPosition(channelNumber, videoIds) {
 }
 
 /* ── CORS PROXY WITH FALLBACK ────────────────────────────── */
+// AbortSignal.timeout is not available in all browsers — use manual controller
+function fqAbortSignal(ms) {
+  const ctrl = new AbortController();
+  setTimeout(() => ctrl.abort(), ms);
+  return ctrl.signal;
+}
+
+// Each proxy has its own response parser
 const FQ_PROXIES = [
-  url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  {
+    url:   u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+    parse: async r => { const d = await r.json(); return d?.contents || null; },
+  },
+  {
+    url:   u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    parse: async r => { const t = await r.text(); return t?.length > 50 ? t : null; },
+  },
 ];
 
-async function fqProxyFetch(url) {
-  for (const proxy of FQ_PROXIES) {
+async function fqProxyFetch(targetUrl) {
+  for (const { url, parse } of FQ_PROXIES) {
     try {
-      const res = await fetch(proxy(url), { signal: AbortSignal.timeout(8000) });
+      const res = await fetch(url(targetUrl), { signal: fqAbortSignal(9000) });
       if (!res.ok) continue;
-      const data = await res.json();
-      // allorigins wraps in { contents }, corsproxy returns raw text in body
-      const text = data.contents ?? (typeof data === 'string' ? data : null);
+      const text = await parse(res);
       if (text) return text;
-    } catch (e) {
-      // try next proxy
-    }
+    } catch (e) { /* try next */ }
   }
   return null;
 }
@@ -814,7 +824,6 @@ async function fqInitApp() {
 
   fqInitCatTabs();
   fqRenderGuide();
-  fqInitName();
 
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v || ''; };
   set('fq-guide-block', fqBlock.name);
