@@ -890,7 +890,11 @@ button, input { font: inherit; }
   font-family: 'Bebas Neue', sans-serif;
   font-size: 18px;
   background: radial-gradient(circle, #1d1a13, #080706);
+  cursor: pointer;
+  transition: .15s ease;
 }
+.fq-circle:hover { border-color: var(--fq-gold2); background: radial-gradient(circle, #2a2418, #0f0d0a); }
+.fq-circle:active { background: rgba(201,162,39,.15); }
 
 .fq-menu-stack { display: grid; gap: 6px; }
 
@@ -1285,6 +1289,7 @@ button, input { font: inherit; }
     padding: 8px 12px;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
+    scroll-margin-top: 160px; /* accounts for sticky mobile bar + guide head */
   }
 
   .fq-ch-num  { font-size: 28px; }
@@ -1338,4 +1343,65 @@ button, input { font: inherit; }
   .fq-ch-name { font-size: 14px; }
   .fq-ch-thumb-wrap { height: 44px; }
   .fq-mc-btn  { padding: 10px 4px; font-size: 12px; }
+}
+
+/* ── MOBILE LANDSCAPE ────────────────────────────────────── */
+@media (orientation: landscape) and (max-height: 500px) {
+  .fq-console {
+    display: flex;
+    flex-direction: row;
+    height: calc(100vh - 52px);
+    overflow: hidden;
+    align-items: stretch;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+    gap: 0;
+  }
+
+  /* Video: sized from height, maintains 16:9 */
+  .fq-screen-wrap-outer {
+    order: 0;
+    flex: 0 0 auto;
+    width: calc((100vh - 52px) * 16 / 9);
+    max-width: 65vw;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #000;
+  }
+
+  .fq-screen-wrap {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: unset;
+    border-radius: 0;
+    border: none;
+  }
+
+  /* Guide: fills the rest, scrolls internally */
+  .fq-right-rail {
+    order: 1;
+    flex: 1;
+    height: 100%;
+    overflow-y: auto;
+    max-height: none;
+    border-top: none;
+    border-left: 2px solid rgba(201,162,39,.25);
+  }
+
+  .fq-guide-head {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .fq-ch-item { scroll-margin-top: 110px; }
+
+  /* Hide everything else */
+  .fq-now-playing,
+  .fq-mobile-controls,
+  .fq-status,
+  .fq-chat-col { display: none !important; }
 }

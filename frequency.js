@@ -24,6 +24,7 @@ let fqActiveCat   = 'all';
 let fqTargetStart = 0;   // intended seek position — verified after PLAYING fires
 let fqShortTimer     = null; // delayed Shorts duration check
 let fqUnstartedTimer = null; // skip video if it never starts playing
+let fqPrevIdx        = -1;  // last channel index for LAST button
 
 /* ── TIME BLOCK ──────────────────────────────────────────── */
 function fqGetBlock() {
@@ -207,10 +208,11 @@ window.onYouTubeIframeAPIReady = function () {
       onReady: e => {
         fqReady = true;
         if (!isMobile) {
-          try { e.target.unMute(); e.target.setVolume(80); } catch (err) {}
+          try { e.target.unMute(); e.target.setVolume(80); fqMuted = false; } catch (err) {}
           fqUnlocked = true;
           const blocker = document.getElementById('fq-tap-blocker');
           if (blocker) blocker.style.display = 'none';
+          fqSyncMuteUI();
         }
         if (fqIdx >= 0) fqLoadSyncedVideo();
       },
@@ -368,6 +370,10 @@ function fqNextVid() {
   fqLoadSyncedVideo();
 }
 
+function fqLastCh() {
+  if (fqPrevIdx >= 0 && fqPrevIdx !== fqIdx) fqSelectCh(fqPrevIdx);
+}
+
 function fqPrevVid() {
   if (fqIdx < 0) return;
   const ch = FQ_CHANNELS[fqIdx];
@@ -451,6 +457,7 @@ function fqShowBug() {
 function fqSelectCh(idx) {
   if (idx < 0 || idx >= FQ_CHANNELS.length) return;
   fqFlash(() => {
+    fqPrevIdx = fqIdx;
     fqIdx = idx;
     const ch = FQ_CHANNELS[idx];
     fqStopNS();
@@ -833,6 +840,7 @@ async function fqInitApp() {
   fqShowBug();
   fqShowNoSig();
 
+  fqSyncMuteUI();
   fqLoadYTAPI();
   fqPopulateQueues();
 }
