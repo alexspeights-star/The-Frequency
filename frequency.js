@@ -180,10 +180,10 @@ async function fqFetchVideos(channelId) {
 /* ── POPULATE ALL QUEUES ─────────────────────────────────── */
 async function fqPopulateQueues() {
   const fetches = FQ_CHANNELS
-    .filter(ch => ch.youtubeChannelId && !ch.liveStreamVideoId && !ch.playlistId)
+    .filter(ch => ch.sourceType === 'channel' && ch.youtubeId)
     .map(async ch => {
       // Use hardcoded IDs if we have them and cache is cold
-      const cacheKey = `fq_vids_${ch.youtubeChannelId}`;
+      const cacheKey = `fq_vids_${ch.youtubeId}`;
       let hasCached = false;
       try {
         const raw = localStorage.getItem(cacheKey);
@@ -197,7 +197,7 @@ async function fqPopulateQueues() {
       } catch (e) {}
 
       if (!hasCached) {
-        const ids = await fqFetchVideos(ch.youtubeChannelId);
+        const ids = await fqFetchVideos(ch.youtubeId);
         if (ids?.length) {
           ch.videoIds = ids;
           const chIndex = FQ_CHANNELS.indexOf(ch);
@@ -375,19 +375,22 @@ function fqLoadSyncedVideo() {
   fqTargetStart = 0;
 
   // 24/7 live stream
-  if (ch.liveStreamVideoId) {
-    fqPlayer.loadVideoById({ videoId: ch.liveStreamVideoId, startSeconds: 0 });
+  if (ch.sourceType === 'live') {
+    fqPlayer.loadVideoById({ videoId: ch.youtubeId, startSeconds: 0 });
     document.getElementById('fq-no-signal').style.display = 'none';
     return;
   }
 
   // Playlist
-  if (ch.playlistId) {
-    fqPlayer.loadPlaylist({ list: ch.playlistId, listType: 'playlist', index: 0, startSeconds: 0 });
+  if (ch.sourceType === 'playlist') {
+    fqPlayer.loadPlaylist({ list: ch.youtubeId, listType: 'playlist', index: 0, startSeconds: 0 });
     fqPlayer.setShuffle(true);
     document.getElementById('fq-no-signal').style.display = 'none';
     return;
   }
+
+  // Pending — no source configured yet
+  if (ch.sourceType === 'pending' || !ch.youtubeId) { fqShowNoSig(); return; }
 
   // Regular channel — synced by time
   if (!ch.videoIds.length) { fqShowNoSig(); return; }
@@ -492,7 +495,7 @@ function fqSelectCh(idx) {
     fqUpdateNP();
     fqUpdateGuideActive();
     fqShowBug();
-    if (!ch.videoIds.length && !ch.liveStreamVideoId && !ch.playlistId) {
+    if (!ch.videoIds.length && ch.sourceType !== 'live' && ch.sourceType !== 'playlist') {
       fqShowNoSig();
       return;
     }
@@ -549,7 +552,7 @@ function fqNextCh() { fqSelectCh((fqIdx + 1) % FQ_CHANNELS.length); }
 
 function fqAutoTune() {
   if (!fqBlock) fqBlock = fqGetBlock();
-  const ready = ch => ch.videoIds.length || ch.liveStreamVideoId || ch.playlistId;
+  const ready = ch => ch.videoIds.length || ch.sourceType === 'live' || ch.sourceType === 'playlist';
   let pool = FQ_CHANNELS.filter(ch => ch.category === fqBlock.cat && ready(ch));
   if (!pool.length) pool = FQ_CHANNELS.filter(ready);
   if (!pool.length) pool = FQ_CHANNELS;
@@ -702,11 +705,12 @@ function fqGetChannelIcon(ch) {
 }
 
 function fqThumbForChannel(ch) {
-  // Use explicit thumbUrl first
   if (ch.thumbUrl) return ch.thumbUrl;
-  // Derive from live stream ID
-  if (ch.liveStreamVideoId) return `https://i.ytimg.com/vi/${ch.liveStreamVideoId}/mqdefault.jpg`;
-  // Derive from first hardcoded or RSS-loaded video ID
+  // Live or playlist: use the youtubeId as a video thumbnail
+  if ((ch.sourceType === 'live' || ch.sourceType === 'playlist') && ch.youtubeId) {
+    return `https://i.ytimg.com/vi/${ch.youtubeId}/mqdefault.jpg`;
+  }
+  // Channel: use first loaded video ID
   if (ch.videoIds?.length) return `https://i.ytimg.com/vi/${ch.videoIds[0]}/mqdefault.jpg`;
   return null;
 }
